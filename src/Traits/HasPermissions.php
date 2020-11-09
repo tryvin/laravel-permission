@@ -194,13 +194,14 @@ trait HasPermissions
      *
      * @param string|int|\Spatie\Permission\Contracts\Permission $permission
      * @param string|null $guardName
+     * @param Model|null $context
      *
      * @return bool
      */
-    public function checkPermissionTo($permission, $guardName = null): bool
+    public function checkPermissionTo($permission, $guardName = null, ?Model $context = null): bool
     {
         try {
-            return $this->hasPermissionTo($permission, $guardName);
+            return $this->hasPermissionTo($permission, $guardName, $context);
         } catch (PermissionDoesNotExist $e) {
             return false;
         }
@@ -209,17 +210,17 @@ trait HasPermissions
     /**
      * Determine if the model has any of the given permissions.
      *
-     * @param array ...$permissions
+     * @param mixed $permissions
+     * @param Model|null $context
      *
      * @return bool
-     * @throws \Exception
      */
-    public function hasAnyPermission(...$permissions): bool
+    public function hasAnyPermission($permissions, ?Model $context = null): bool
     {
-        $permissions = collect($permissions)->flatten();
+        $permissions = collect(Arr::wrap($permissions))->flatten();
 
         foreach ($permissions as $permission) {
-            if ($this->checkPermissionTo($permission)) {
+            if ($this->checkPermissionTo($permission, null, $context)) {
                 return true;
             }
         }
@@ -230,17 +231,17 @@ trait HasPermissions
     /**
      * Determine if the model has all of the given permissions.
      *
-     * @param array ...$permissions
+     * @param mixed $permissions
+     * @param Model|null $context
      *
      * @return bool
-     * @throws \Exception
      */
-    public function hasAllPermissions(...$permissions): bool
+    public function hasAllPermissions($permissions, ?Model $context = null): bool
     {
-        $permissions = collect($permissions)->flatten();
+        $permissions = collect(Arr::wrap($permissions))->flatten();
 
         foreach ($permissions as $permission) {
-            if (! $this->hasPermissionTo($permission)) {
+            if (! $this->hasPermissionTo($permission, $context)) {
                 return false;
             }
         }
@@ -252,12 +253,13 @@ trait HasPermissions
      * Determine if the model has, via roles, the given permission.
      *
      * @param \Spatie\Permission\Contracts\Permission $permission
+     * @param Model|null $context
      *
      * @return bool
      */
-    protected function hasPermissionViaRole(Permission $permission): bool
+    protected function hasPermissionViaRole(Permission $permission, ?Model $context = null): bool
     {
-        return $this->hasRole($permission->roles);
+        return $this->hasRole($permission->roles, null, $context);
     }
 
     /**
@@ -326,9 +328,14 @@ trait HasPermissions
      * @param Model|null $context
      *
      * @return $this
+     * @throws \Exception
      */
     public function givePermissionTo($permissions, ?Model $context = null)
     {
+        if ($this->permissions()->getTable() === config('permission.table_names.role_has_permissions') && $context) {
+            throw new \Exception('This relationship has no context support');
+        }
+
         $permissions = collect(Arr::wrap($permissions))
             ->flatten()
             ->map(function ($permission) {
@@ -499,12 +506,12 @@ trait HasPermissions
 
     /**
      * Check if the model has All of the requested Direct permissions.
-     * @param array ...$permissions
+     * @param array $permissions
      * @return bool
      */
-    public function hasAllDirectPermissions(...$permissions): bool
+    public function hasAllDirectPermissions($permissions): bool
     {
-        $permissions = collect($permissions)->flatten();
+        $permissions = collect(Arr::wrap($permissions))->flatten();
 
         foreach ($permissions as $permission) {
             if (! $this->hasDirectPermission($permission)) {
@@ -517,15 +524,16 @@ trait HasPermissions
 
     /**
      * Check if the model has Any of the requested Direct permissions.
-     * @param array ...$permissions
+     * @param mixed $permissions
+     * @param Model|null $context
      * @return bool
      */
-    public function hasAnyDirectPermission(...$permissions): bool
+    public function hasAnyDirectPermission($permissions, ?Model $context = null): bool
     {
-        $permissions = collect($permissions)->flatten();
+        $permissions = collect(Arr::wrap($permissions))->flatten();
 
         foreach ($permissions as $permission) {
-            if ($this->hasDirectPermission($permission)) {
+            if ($this->hasDirectPermission($permission, $context)) {
                 return true;
             }
         }

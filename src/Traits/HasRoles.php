@@ -235,7 +235,7 @@ trait HasRoles
 
         if (is_array($roles)) {
             foreach ($roles as $role) {
-                if ($this->hasRole($role, $guard)) {
+                if ($this->hasRole($role, $guard, $context)) {
                     return true;
                 }
             }

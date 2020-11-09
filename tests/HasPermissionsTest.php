@@ -26,6 +26,18 @@ class HasPermissionsTest extends TestCase
 
         $this->assertFalse($this->testUser->hasPermissionTo($this->testUserPermission));
         $this->assertTrue($this->testUser->hasPermissionTo($this->testUserPermission, null, $context));
+        $this->assertFalse($this->testUser->hasPermissionTo($this->testUserPermission, null, $wrongContext));
+    }
+
+    /** @test */
+    public function it_can_assign_a_permission_to_a_user_using_context_and_role()
+    {
+        $context = Team::create();
+        $wrongContext = Team::create();
+        $this->testUserRole->givePermissionTo($this->testUserPermission);
+        $this->testUser->assignRole($this->testUserRole, $context);
+
+        $this->assertFalse($this->testUser->hasPermissionTo($this->testUserPermission));
         $this->assertTrue($this->testUser->hasPermissionTo($this->testUserPermission, null, $context));
         $this->assertFalse($this->testUser->hasPermissionTo($this->testUserPermission, null, $wrongContext));
     }
@@ -410,14 +422,14 @@ class HasPermissionsTest extends TestCase
 
         $this->testUser->givePermissionTo('edit-articles');
 
-        $this->assertTrue($this->testUser->hasAnyPermission('edit-news', 'edit-articles'));
+        $this->assertTrue($this->testUser->hasAnyPermission(['edit-news', 'edit-articles']));
 
         $this->testUser->givePermissionTo('edit-news');
 
         $this->testUser->revokePermissionTo($this->testUserPermission);
 
-        $this->assertTrue($this->testUser->hasAnyPermission('edit-articles', 'edit-news'));
-        $this->assertFalse($this->testUser->hasAnyPermission('edit-blog', 'Edit News', ['Edit News']));
+        $this->assertTrue($this->testUser->hasAnyPermission(['edit-articles', 'edit-news']));
+        $this->assertFalse($this->testUser->hasAnyPermission(['edit-blog', 'Edit News', ['Edit News']]));
     }
 
     /** @test */
@@ -443,8 +455,22 @@ class HasPermissionsTest extends TestCase
 
         $this->testUser->assignRole('testRole');
 
-        $this->assertTrue($this->testUser->hasAnyPermission('edit-news', 'edit-articles'));
-        $this->assertFalse($this->testUser->hasAnyPermission('edit-blog', 'Edit News', ['Edit News']));
+        $this->assertTrue($this->testUser->hasAnyPermission(['edit-news', 'edit-articles']));
+        $this->assertFalse($this->testUser->hasAnyPermission(['edit-blog', 'Edit News', ['Edit News']]));
+    }
+
+    /** @test */
+    public function it_can_determine_that_the_user_has_any_of_the_permissions_via_role_using_context()
+    {
+        $context = Team::create();
+        $this->testUserRole->givePermissionTo('edit-articles');
+        // VOLTAR
+        $this->testUser->assignRole('testRole', $context);
+
+        $this->assertTrue($this->testUser->hasAnyPermission(['edit-news', 'edit-articles'], $context));
+        $this->assertFalse($this->testUser->hasAnyPermission(['edit-blog', 'Edit News', ['Edit News']], $context));
+        $this->assertFalse($this->testUser->hasAnyPermission(['edit-news', 'edit-articles']));
+        $this->assertFalse($this->testUser->hasAnyPermission(['edit-blog', 'Edit News', ['Edit News']]));
     }
 
     /** @test */
@@ -452,7 +478,7 @@ class HasPermissionsTest extends TestCase
     {
         $this->testUser->givePermissionTo(['edit-articles', 'edit-news']);
 
-        $this->assertTrue($this->testUser->hasAllPermissions('edit-articles', 'edit-news'));
+        $this->assertTrue($this->testUser->hasAllPermissions(['edit-articles', 'edit-news']));
 
         $this->testUser->revokePermissionTo('edit-articles');
 
@@ -672,7 +698,7 @@ class HasPermissionsTest extends TestCase
         $this->assertTrue($this->testUser->hasAllDirectPermissions(['edit-news', 'edit-articles']));
         $this->assertTrue($this->testUser->hasAllDirectPermissions('edit-news', 'edit-articles'));
         $this->assertFalse($this->testUser->hasAllDirectPermissions(['edit-articles', 'edit-news', 'edit-blog']));
-        $this->assertFalse($this->testUser->hasAllDirectPermissions(['edit-articles', 'edit-news'], 'edit-blog'));
+        $this->assertFalse($this->testUser->hasAllDirectPermissions([['edit-articles', 'edit-news'], 'edit-blog']));
     }
 
     /** @test */
@@ -680,7 +706,7 @@ class HasPermissionsTest extends TestCase
     {
         $this->testUser->givePermissionTo(['edit-articles', 'edit-news']);
         $this->assertTrue($this->testUser->hasAnyDirectPermission(['edit-news', 'edit-blog']));
-        $this->assertTrue($this->testUser->hasAnyDirectPermission('edit-news', 'edit-blog'));
-        $this->assertFalse($this->testUser->hasAnyDirectPermission('edit-blog', 'Edit News', ['Edit News']));
+        $this->assertTrue($this->testUser->hasAnyDirectPermission(['edit-news', 'edit-blog']));
+        $this->assertFalse($this->testUser->hasAnyDirectPermission(['edit-blog', 'Edit News', ['Edit News']]));
     }
 }
