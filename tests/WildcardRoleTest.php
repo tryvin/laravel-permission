@@ -39,18 +39,6 @@ class WildcardRoleTest extends TestCase
     }
 
     /** @test */
-    public function it_can_be_given_multiple_permissions_using_multiple_arguments()
-    {
-        Permission::create(['name' => 'posts.*']);
-        Permission::create(['name' => 'news.*']);
-
-        $this->testUserRole->givePermissionTo('posts.*', 'news.*');
-
-        $this->assertTrue($this->testUserRole->hasPermissionTo('posts.edit.123'));
-        $this->assertTrue($this->testUserRole->hasPermissionTo('news.view.1'));
-    }
-
-    /** @test */
     public function it_can_be_given_a_permission_using_objects()
     {
         $this->testUserRole->givePermissionTo($this->testUserPermission);

@@ -105,6 +105,10 @@ abstract class TestCase extends Orchestra
             $table->string('email');
         });
 
+        $app['db']->connection()->getSchemaBuilder()->create('teams', function (Blueprint $table) {
+            $table->increments('id');
+        });
+
         if (Cache::getStore() instanceof \Illuminate\Cache\DatabaseStore ||
             $app[PermissionRegistrar::class]->getCacheStore() instanceof \Illuminate\Cache\DatabaseStore) {
             $this->createCacheTable();

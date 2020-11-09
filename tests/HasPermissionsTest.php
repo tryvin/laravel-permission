@@ -18,6 +18,113 @@ class HasPermissionsTest extends TestCase
     }
 
     /** @test */
+    public function it_can_assign_a_permission_to_a_user_using_context()
+    {
+        $context = Team::create();
+        $wrongContext = Team::create();
+        $this->testUser->givePermissionTo($this->testUserPermission, $context);
+
+        $this->assertFalse($this->testUser->hasPermissionTo($this->testUserPermission));
+        $this->assertTrue($this->testUser->hasPermissionTo($this->testUserPermission, null, $context));
+        $this->assertTrue($this->testUser->hasPermissionTo($this->testUserPermission, null, $context));
+        $this->assertFalse($this->testUser->hasPermissionTo($this->testUserPermission, null, $wrongContext));
+    }
+
+    /** @test */
+    public function it_can_assign_the_same_permission_to_a_user_using_different_contexts()
+    {
+        $contextA = Team::create();
+        $contextB = Team::create();
+        $this->testUser->givePermissionTo($this->testUserPermission, $contextA);
+        $this->testUser->givePermissionTo($this->testUserPermission, $contextB);
+
+        $this->assertFalse($this->testUser->hasPermissionTo($this->testUserPermission));
+        $this->assertTrue($this->testUser->hasPermissionTo($this->testUserPermission, null, $contextA));
+        $this->assertTrue($this->testUser->hasPermissionTo($this->testUserPermission, null, $contextB));
+    }
+
+    /** @test */
+    public function it_can_sync_permissions_to_a_user_using_different_contexts()
+    {
+        $contextA = Team::create();
+        $contextB = Team::create();
+
+        $this->testUser->syncPermissions(['edit-articles', 'edit-blog'], $contextA);
+        $this->testUser->syncPermissions(['edit-news', 'edit-blog'], $contextB);
+
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-articles', $contextA));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-blog', $contextA));
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-news', $contextA));
+
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-articles', $contextB));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-blog', $contextB));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news', $contextB));
+    }
+
+    /** @test */
+    public function it_can_assign_the_same_permission_to_a_user_using_global_context()
+    {
+        $contextA = Team::create();
+        $this->testUser->givePermissionTo($this->testUserPermission);
+        $this->testUser->givePermissionTo($this->testUserPermission, $contextA);
+
+        $this->assertEquals(2, $this->testUser->permissions()->count());
+        $this->assertTrue($this->testUser->hasPermissionTo($this->testUserPermission));
+        $this->assertTrue($this->testUser->hasPermissionTo($this->testUserPermission, null, $contextA));
+    }
+
+    /** @test */
+    public function it_can_sync_multiple_permissions_using_context()
+    {
+        $context = Team::create();
+        $this->testUser->givePermissionTo('edit-news', $context);
+
+        $this->testUser->syncPermissions(['edit-articles', 'edit-blog'], $context);
+
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-articles'));
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-blog'));
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-news'));
+
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-articles', $context));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-blog', $context));
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-news', $context));
+    }
+
+    /** @test */
+    public function it_wont_sync_permissions_from_global_context()
+    {
+        $context = Team::create();
+        $this->testUser->givePermissionTo('edit-news');
+
+        $this->testUser->syncPermissions(['edit-articles', 'edit-blog'], $context);
+
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-articles'));
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-blog'));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news'));
+
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-articles', $context));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-blog', $context));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news', $context));
+    }
+
+    /** @test */
+    public function it_wont_sync_permissions_from_another_context()
+    {
+        $context = Team::create();
+        $this->testUser->givePermissionTo('edit-news', $context);
+
+        $this->testUser->syncPermissions(['edit-articles', 'edit-blog']);
+
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-articles'));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-blog'));
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-news'));
+
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-articles', $context));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-blog', $context));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news', $context));
+    }
+
+    /** @test */
     public function it_throws_an_exception_when_assigning_a_permission_that_does_not_exist()
     {
         $this->expectException(PermissionDoesNotExist::class);
@@ -47,6 +154,49 @@ class HasPermissionsTest extends TestCase
         $this->testUser->revokePermissionTo($this->testUserPermission);
 
         $this->assertFalse($this->testUser->hasPermissionTo($this->testUserPermission));
+    }
+
+    /** @test */
+    public function it_can_revoke_a_permission_from_a_user_using_global_context()
+    {
+        $context = Team::create();
+        $this->testUser->givePermissionTo('edit-news');
+        $this->testUser->givePermissionTo('edit-news', $context);
+
+        $this->testUser->revokePermissionTo('edit-news');
+
+        $this->assertEquals(1, $this->testUser->permissions()->count());
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-news'));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news', $context));
+    }
+
+    /** @test */
+    public function it_can_revoke_a_permission_from_a_user_using_context()
+    {
+        $context = Team::create();
+        $this->testUser->givePermissionTo('edit-news');
+        $this->testUser->givePermissionTo('edit-news', $context);
+
+        $this->testUser->revokePermissionTo('edit-news', $context);
+
+        $this->assertEquals(1, $this->testUser->permissions()->count());
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news'));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news', $context));
+    }
+
+    /** @test */
+    public function it_can_revoke_a_permission_from_a_user_using_different_contexts()
+    {
+        $contextA = Team::create();
+        $contextB = Team::create();
+        $this->testUser->givePermissionTo('edit-news', $contextA);
+        $this->testUser->givePermissionTo('edit-news', $contextB);
+
+        $this->testUser->revokePermissionTo('edit-news', $contextA);
+
+        $this->assertEquals(1, $this->testUser->permissions()->count());
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-news', $contextA));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news', $contextB));
     }
 
     /** @test */
@@ -300,14 +450,14 @@ class HasPermissionsTest extends TestCase
     /** @test */
     public function it_can_determine_that_the_user_has_all_of_the_permissions_directly()
     {
-        $this->testUser->givePermissionTo('edit-articles', 'edit-news');
+        $this->testUser->givePermissionTo(['edit-articles', 'edit-news']);
 
         $this->assertTrue($this->testUser->hasAllPermissions('edit-articles', 'edit-news'));
 
         $this->testUser->revokePermissionTo('edit-articles');
 
-        $this->assertFalse($this->testUser->hasAllPermissions('edit-articles', 'edit-news'));
-        $this->assertFalse($this->testUser->hasAllPermissions(['edit-articles', 'edit-news'], 'edit-blog'));
+        $this->assertFalse($this->testUser->hasAllPermissions(['edit-articles', 'edit-news']));
+        $this->assertFalse($this->testUser->hasAllPermissions(['edit-articles', 'edit-news', 'edit-blog']));
     }
 
     /** @test */
@@ -329,11 +479,11 @@ class HasPermissionsTest extends TestCase
     /** @test */
     public function it_can_determine_that_the_user_has_all_of_the_permissions_via_role()
     {
-        $this->testUserRole->givePermissionTo('edit-articles', 'edit-news');
+        $this->testUserRole->givePermissionTo(['edit-articles', 'edit-news']);
 
         $this->testUser->assignRole('testRole');
 
-        $this->assertTrue($this->testUser->hasAllPermissions('edit-articles', 'edit-news'));
+        $this->assertTrue($this->testUser->hasAllPermissions(['edit-articles', 'edit-news']));
     }
 
     /** @test */
@@ -388,7 +538,7 @@ class HasPermissionsTest extends TestCase
     {
         $this->testUser->givePermissionTo('edit-news');
 
-        $this->testUser->syncPermissions('edit-articles', 'edit-blog');
+        $this->testUser->syncPermissions(['edit-articles', 'edit-blog']);
 
         $this->assertTrue($this->testUser->hasDirectPermission('edit-articles'));
 
@@ -498,7 +648,7 @@ class HasPermissionsTest extends TestCase
     /** @test */
     public function it_can_retrieve_permission_names()
     {
-        $this->testUser->givePermissionTo('edit-news', 'edit-articles');
+        $this->testUser->givePermissionTo(['edit-news', 'edit-articles']);
         $this->assertEquals(
             collect(['edit-news', 'edit-articles']),
             $this->testUser->getPermissionNames()

@@ -3,7 +3,9 @@
 namespace Spatie\Permission\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Spatie\Permission\Contracts\Permission;
 use Spatie\Permission\Exceptions\GuardDoesNotMatch;
@@ -48,7 +50,7 @@ trait HasPermissions
             config('permission.table_names.model_has_permissions'),
             config('permission.column_names.model_morph_key'),
             'permission_id'
-        );
+        )->withPivot('context_type', 'context_id');
     }
 
     /**
@@ -106,11 +108,11 @@ trait HasPermissions
      *
      * @param string|int|\Spatie\Permission\Contracts\Permission $permission
      * @param string|null $guardName
+     * @param Model|null $context
      *
      * @return bool
-     * @throws PermissionDoesNotExist
      */
-    public function hasPermissionTo($permission, $guardName = null): bool
+    public function hasPermissionTo($permission, $guardName = null, ?Model $context = null): bool
     {
         if (config('permission.enable_wildcard_permission', false)) {
             return $this->hasWildcardPermission($permission, $guardName);
@@ -136,7 +138,7 @@ trait HasPermissions
             throw new PermissionDoesNotExist;
         }
 
-        return $this->hasDirectPermission($permission) || $this->hasPermissionViaRole($permission);
+        return $this->hasDirectPermission($permission, $context) || $this->hasPermissionViaRole($permission, $context);
     }
 
     /**
@@ -262,11 +264,11 @@ trait HasPermissions
      * Determine if the model has the given permission.
      *
      * @param string|int|\Spatie\Permission\Contracts\Permission $permission
+     * @param Model|null $context
      *
      * @return bool
-     * @throws PermissionDoesNotExist
      */
-    public function hasDirectPermission($permission): bool
+    public function hasDirectPermission($permission, ?Model $context = null): bool
     {
         $permissionClass = $this->getPermissionClass();
 
@@ -282,7 +284,13 @@ trait HasPermissions
             throw new PermissionDoesNotExist;
         }
 
-        return $this->permissions->contains('id', $permission->id);
+        $permissions = $this->permissions->filter(function ($el) use ($context) {
+            $hasNotContext = $el->pivot->context_type === null && $el->pivot->context_id === null;
+            $hasThisContext = $context && $el->pivot->context_type === get_class($context) && intval($el->pivot->context_id) === intval($context->id);
+            return $hasNotContext || $hasThisContext;
+        });
+
+        return $permissions->contains('id', $permission->id);
     }
 
     /**
@@ -315,12 +323,13 @@ trait HasPermissions
      * Grant the given permission(s) to a role.
      *
      * @param string|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection $permissions
+     * @param Model|null $context
      *
      * @return $this
      */
-    public function givePermissionTo(...$permissions)
+    public function givePermissionTo($permissions, ?Model $context = null)
     {
-        $permissions = collect($permissions)
+        $permissions = collect(Arr::wrap($permissions))
             ->flatten()
             ->map(function ($permission) {
                 if (empty($permission)) {
@@ -335,25 +344,33 @@ trait HasPermissions
             ->each(function ($permission) {
                 $this->ensureModelSharesGuard($permission);
             })
-            ->map->id
-            ->all();
+            ->map->id;
+
+        if ($context) {
+            $permissions = $permissions->mapWithKeys(function ($id) use ($context) {
+                return [$id => [
+                    'context_type' => get_class($context),
+                    'context_id' => $context->id,
+                ]];
+            });
+        }
+
+        $permissions = $permissions->all();
 
         $model = $this->getModel();
 
         if ($model->exists) {
-            $this->permissions()->sync($permissions, false);
-            $model->load('permissions');
+            $this->syncWithoutDetaching($permissions, $model, $context);
         } else {
             $class = \get_class($model);
 
             $class::saved(
-                function ($object) use ($permissions, $model) {
+                function ($object) use ($permissions, $model, $context) {
                     static $modelLastFiredOn;
                     if ($modelLastFiredOn !== null && $modelLastFiredOn === $model) {
                         return;
                     }
-                    $object->permissions()->sync($permissions, false);
-                    $object->load('permissions');
+                    $this->syncWithoutDetaching($permissions, $object, $context);
                     $modelLastFiredOn = $object;
                 }
             );
@@ -368,26 +385,48 @@ trait HasPermissions
      * Remove all current permissions and set the given ones.
      *
      * @param string|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection $permissions
+     * @param Model|null $context
      *
      * @return $this
      */
-    public function syncPermissions(...$permissions)
+    public function syncPermissions($permissions, ?Model $context = null)
     {
-        $this->permissions()->detach();
+        $belongsToMany = $this->permissions();
+        if ($this->permissions()->getTable() === 'model_has_permissions') {
+            if ($context) {
+            $belongsToMany->wherePivot('context_type', get_class($context))
+                ->wherePivot('context_id', $context->id);
+            } else {
+            $belongsToMany->wherePivotNull('context_type')
+                ->wherePivotNull('context_id');
+            }
+        }
+        $belongsToMany->detach();
 
-        return $this->givePermissionTo($permissions);
+        return $this->givePermissionTo($permissions, $context);
     }
 
     /**
      * Revoke the given permission.
      *
      * @param \Spatie\Permission\Contracts\Permission|\Spatie\Permission\Contracts\Permission[]|string|string[] $permission
+     * @param Model|null $context
      *
      * @return $this
      */
-    public function revokePermissionTo($permission)
+    public function revokePermissionTo($permission, ?Model $context = null)
     {
-        $this->permissions()->detach($this->getStoredPermission($permission));
+        $belongsToMany = $this->permissions();
+        if ($this->permissions()->getTable() === 'model_has_permissions') {
+            if ($context) {
+            $belongsToMany->wherePivot('context_type', get_class($context))
+                ->wherePivot('context_id', $context->id);
+            } else {
+            $belongsToMany->wherePivotNull('context_type')
+                ->wherePivotNull('context_id');
+            }
+        }
+        $belongsToMany->detach($this->getStoredPermission($permission));
 
         $this->forgetCachedPermissions();
 
@@ -492,5 +531,19 @@ trait HasPermissions
         }
 
         return false;
+    }
+
+    private function syncWithoutDetaching($permissions, $model, $context = null): void
+    {
+        $belongsToMany = $this->permissions();
+        if ($context) {
+        $belongsToMany->wherePivot('context_type', get_class($context))
+            ->wherePivot('context_id', $context->id);
+        } else {
+        $belongsToMany->wherePivotNull('context_type')
+            ->wherePivotNull('context_id');
+        }
+        $belongsToMany->sync($permissions, false);
+        $model->load('permissions');
     }
 }
