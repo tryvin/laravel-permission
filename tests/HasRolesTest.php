@@ -49,6 +49,158 @@ class HasRolesTest extends TestCase
     }
 
     /** @test */
+    public function it_can_assign_and_remove_a_role_using_context()
+    {
+        $context = Team::create();
+        $this->assertFalse($this->testUser->hasRole('testRole', null));
+        $this->assertFalse($this->testUser->hasRole('testRole', null, $context));
+
+        $this->testUser->assignRole(['testRole'], $context);
+
+        $this->assertFalse($this->testUser->hasRole('testRole', null));
+        $this->assertTrue($this->testUser->hasRole('testRole', null, $context));
+
+        $this->testUser->removeRole('testRole', $context);
+
+        $this->assertFalse($this->testUser->hasRole('testRole', null));
+        $this->assertFalse($this->testUser->hasRole('testRole', null, $context));
+    }
+
+    /** @test */
+    public function it_can_remove_a_role_from_context_only()
+    {
+        $context = Team::create();
+        $this->assertEquals(0, $this->testUser->roles()->count());
+        $this->assertFalse($this->testUser->hasRole('testRole', null));
+        $this->assertFalse($this->testUser->hasRole('testRole', null, $context));
+
+        $this->testUser->assignRole(['testRole']);
+        $this->testUser->assignRole(['testRole'], $context);
+
+        $this->assertEquals(2, $this->testUser->roles()->count());
+        $this->assertTrue($this->testUser->hasRole('testRole', null));
+        $this->assertTrue($this->testUser->hasRole('testRole', null, $context));
+
+        $this->testUser->removeRole('testRole', $context);
+
+        $this->assertEquals(1, $this->testUser->roles()->count());
+        $this->assertTrue($this->testUser->hasRole('testRole', null));
+        $this->assertTrue($this->testUser->hasRole('testRole', null, $context));
+    }
+
+    /** @test */
+    public function it_can_remove_a_role_from_global_only()
+    {
+        $context = Team::create();
+        $this->assertEquals(0, $this->testUser->roles()->count());
+        $this->assertFalse($this->testUser->hasRole('testRole', null));
+        $this->assertFalse($this->testUser->hasRole('testRole', null, $context));
+
+        $this->testUser->assignRole(['testRole']);
+        $this->testUser->assignRole(['testRole'], $context);
+
+        $this->assertEquals(2, $this->testUser->roles()->count());
+        $this->assertTrue($this->testUser->hasRole('testRole', null));
+        $this->assertTrue($this->testUser->hasRole('testRole', null, $context));
+
+        $this->testUser->removeRole('testRole');
+
+        $this->assertEquals(1, $this->testUser->roles()->count());
+        $this->assertFalse($this->testUser->hasRole('testRole', null));
+        $this->assertTrue($this->testUser->hasRole('testRole', null, $context));
+    }
+
+    /** @test */
+    public function it_can_assign_the_same_role_to_a_user_using_different_contexts()
+    {
+        $contextA = Team::create();
+        $contextB = Team::create();
+        $this->testUser->assignRole($this->testUserRole, $contextA);
+        $this->testUser->assignRole($this->testUserRole, $contextB);
+
+        $this->assertFalse($this->testUser->hasRole($this->testUserRole));
+        $this->assertTrue($this->testUser->hasRole($this->testUserRole, null, $contextA));
+        $this->assertTrue($this->testUser->hasRole($this->testUserRole, null, $contextB));
+    }
+
+    /** @test */
+    public function it_can_sync_roles_to_a_user_using_different_contexts()
+    {
+        $contextA = Team::create();
+        $contextB = Team::create();
+        $this->testUser->syncRoles(['testRole', 'testRole2'], $contextA);
+        $this->testUser->syncRoles(['testRole2', 'testRole3'], $contextB);
+
+        $this->assertFalse($this->testUser->hasRole('testRole'));
+        $this->assertFalse($this->testUser->hasRole('testRole2'));
+        $this->assertFalse($this->testUser->hasRole('testRole3'));
+
+        $this->assertTrue($this->testUser->hasRole('testRole', null, $contextA));
+        $this->assertTrue($this->testUser->hasRole('testRole2', null, $contextA));
+        $this->assertFalse($this->testUser->hasRole('testRole3', null, $contextA));
+
+        $this->assertFalse($this->testUser->hasRole('testRole', null, $contextB));
+        $this->assertTrue($this->testUser->hasRole('testRole2', null, $contextB));
+        $this->assertTrue($this->testUser->hasRole('testRole3', null, $contextB));
+    }
+
+    /** @test */
+    public function it_can_assign_the_same_role_to_a_user_using_global_context()
+    {
+        $context = Team::create();
+        $this->testUser->assignRole($this->testUserRole);
+        $this->testUser->assignRole($this->testUserRole, $context);
+
+        $this->assertEquals(2, $this->testUser->roles()->count());
+        $this->assertTrue($this->testUser->hasRole($this->testUserRole));
+        $this->assertTrue($this->testUser->hasRole($this->testUserRole, null, $context));
+    }
+
+    /** @test */
+    public function it_can_use_global_roles_in_context()
+    {
+        $context = Team::create();
+        $this->testUser->assignRole('testRole');
+
+        $this->assertTrue($this->testUser->hasRole('testRole'));
+        $this->assertTrue($this->testUser->hasRole('testRole', null, $context));
+    }
+
+    /** @test */
+    public function it_wont_sync_roles_from_global_context()
+    {
+        $context = Team::create();
+        $this->testUser->assignRole('testRole');
+
+        $this->testUser->syncRoles(['testRole2', 'testRole3'], $context);
+
+        $this->assertTrue($this->testUser->hasRole('testRole'));
+        $this->assertFalse($this->testUser->hasRole('testRole2'));
+        $this->assertFalse($this->testUser->hasRole('testRole3'));
+
+        $this->assertTrue($this->testUser->hasRole('testRole', null, $context));
+        $this->assertTrue($this->testUser->hasRole('testRole2', null, $context));
+        $this->assertTrue($this->testUser->hasRole('testRole3', null, $context));
+    }
+
+    /** @test */
+    public function it_wont_sync_roles_from_another_context()
+    {
+        $context = Team::create();
+        $this->testUser->assignRole('testRole', $context);
+
+        $this->testUser->syncRoles(['testRole2', 'testRole3']);
+
+        $this->assertFalse($this->testUser->hasRole('testRole'));
+        $this->assertTrue($this->testUser->hasRole('testRole2'));
+        $this->assertTrue($this->testUser->hasRole('testRole3'));
+
+        $this->assertTrue($this->testUser->hasRole('testRole', null, $context));
+        $this->assertTrue($this->testUser->hasRole('testRole2', null, $context));
+        $this->assertTrue($this->testUser->hasRole('testRole3', null, $context));
+    }
+
+    /** @test */
     public function it_removes_a_role_and_returns_roles()
     {
         $this->testUser->assignRole('testRole');
@@ -95,7 +247,7 @@ class HasRolesTest extends TestCase
     /** @test */
     public function it_can_assign_multiple_roles_at_once()
     {
-        $this->testUser->assignRole($this->testUserRole->id, 'testRole2');
+        $this->testUser->assignRole([$this->testUserRole->id, 'testRole2']);
 
         $this->assertTrue($this->testUser->hasRole('testRole'));
 
@@ -195,7 +347,7 @@ class HasRolesTest extends TestCase
     /** @test */
     public function it_can_sync_multiple_roles()
     {
-        $this->testUser->syncRoles('testRole', 'testRole2');
+        $this->testUser->syncRoles(['testRole', 'testRole2']);
 
         $this->assertTrue($this->testUser->hasRole('testRole'));
 
@@ -271,11 +423,11 @@ class HasRolesTest extends TestCase
     {
         $this->expectException(RoleDoesNotExist::class);
 
-        $this->testUser->syncRoles('testRole', 'testAdminRole');
+        $this->testUser->syncRoles(['testRole', 'testAdminRole']);
 
         $this->expectException(GuardDoesNotMatch::class);
 
-        $this->testUser->syncRoles('testRole', $this->testAdminRole);
+        $this->testUser->syncRoles(['testRole', $this->testAdminRole]);
     }
 
     /** @test */
@@ -509,7 +661,7 @@ class HasRolesTest extends TestCase
     /** @test */
     public function it_can_retrieve_role_names()
     {
-        $this->testUser->assignRole('testRole', 'testRole2');
+        $this->testUser->assignRole(['testRole', 'testRole2']);
 
         $this->assertEquals(
             collect(['testRole', 'testRole2']),

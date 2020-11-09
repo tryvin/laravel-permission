@@ -360,7 +360,7 @@ trait HasPermissions
         $model = $this->getModel();
 
         if ($model->exists) {
-            $this->syncWithoutDetaching($permissions, $model, $context);
+            $this->syncPermissionsWithoutDetaching($permissions, $model, $context);
         } else {
             $class = \get_class($model);
 
@@ -370,7 +370,7 @@ trait HasPermissions
                     if ($modelLastFiredOn !== null && $modelLastFiredOn === $model) {
                         return;
                     }
-                    $this->syncWithoutDetaching($permissions, $object, $context);
+                    $this->syncPermissionsWithoutDetaching($permissions, $object, $context);
                     $modelLastFiredOn = $object;
                 }
             );
@@ -392,7 +392,7 @@ trait HasPermissions
     public function syncPermissions($permissions, ?Model $context = null)
     {
         $belongsToMany = $this->permissions();
-        if ($this->permissions()->getTable() === 'model_has_permissions') {
+        if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
             if ($context) {
             $belongsToMany->wherePivot('context_type', get_class($context))
                 ->wherePivot('context_id', $context->id);
@@ -533,7 +533,7 @@ trait HasPermissions
         return false;
     }
 
-    private function syncWithoutDetaching($permissions, $model, $context = null): void
+    private function syncPermissionsWithoutDetaching($permissions, $model, $context = null): void
     {
         $belongsToMany = $this->permissions();
         if ($context) {

@@ -3,7 +3,9 @@
 namespace Spatie\Permission\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Spatie\Permission\Contracts\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -45,7 +47,7 @@ trait HasRoles
             config('permission.table_names.model_has_roles'),
             config('permission.column_names.model_morph_key'),
             'role_id'
-        );
+        )->withPivot('context_type', 'context_id');
     }
 
     /**
@@ -86,13 +88,14 @@ trait HasRoles
     /**
      * Assign the given role to the model.
      *
-     * @param array|string|\Spatie\Permission\Contracts\Role ...$roles
+     * @param array|string|\Spatie\Permission\Contracts\Role $roles
+     * @param Model|null $context
      *
      * @return $this
      */
-    public function assignRole(...$roles)
+    public function assignRole($roles, ?Model $context = null)
     {
-        $roles = collect($roles)
+        $roles = collect(Arr::wrap($roles))
             ->flatten()
             ->map(function ($role) {
                 if (empty($role)) {
@@ -107,25 +110,33 @@ trait HasRoles
             ->each(function ($role) {
                 $this->ensureModelSharesGuard($role);
             })
-            ->map->id
-            ->all();
+            ->map->id;
+
+        if ($context) {
+            $roles = $roles->mapWithKeys(function ($id) use ($context) {
+                return [$id => [
+                    'context_type' => get_class($context),
+                    'context_id' => $context->id,
+                ]];
+            });
+        }
+
+        $roles = $roles->all();
 
         $model = $this->getModel();
 
         if ($model->exists) {
-            $this->roles()->sync($roles, false);
-            $model->load('roles');
+            $this->syncRolesWithoutDetaching($roles, $model, $context);
         } else {
             $class = \get_class($model);
 
             $class::saved(
-                function ($object) use ($roles, $model) {
+                function ($object) use ($roles, $model, $context) {
                     static $modelLastFiredOn;
                     if ($modelLastFiredOn !== null && $modelLastFiredOn === $model) {
                         return;
                     }
-                    $object->roles()->sync($roles, false);
-                    $object->load('roles');
+                    $this->syncRolesWithoutDetaching($roles, $object, $context);
                     $modelLastFiredOn = $object;
                 }
             );
@@ -140,10 +151,22 @@ trait HasRoles
      * Revoke the given role from the model.
      *
      * @param string|\Spatie\Permission\Contracts\Role $role
+     * @param Model|null $context
+     * @return HasRoles
      */
-    public function removeRole($role)
+    public function removeRole($role, ?Model $context = null)
     {
-        $this->roles()->detach($this->getStoredRole($role));
+        $belongsToMany = $this->roles();
+        if ($this->roles()->getTable() === 'model_has_roles') {
+            if ($context) {
+            $belongsToMany->wherePivot('context_type', get_class($context))
+                ->wherePivot('context_id', $context->id);
+            } else {
+            $belongsToMany->wherePivotNull('context_type')
+                ->wherePivotNull('context_id');
+            }
+        }
+        $belongsToMany->detach($this->getStoredRole($role));
 
         $this->load('roles');
 
@@ -155,15 +178,26 @@ trait HasRoles
     /**
      * Remove all current roles and set the given ones.
      *
-     * @param  array|\Spatie\Permission\Contracts\Role|string  ...$roles
+     * @param  array|\Spatie\Permission\Contracts\Role|string  $roles
+     * @param Model|null $context
      *
      * @return $this
      */
-    public function syncRoles(...$roles)
+    public function syncRoles($roles, ?Model $context = null)
     {
-        $this->roles()->detach();
+        $belongsToMany = $this->roles();
+        if ($this->roles()->getTable() === config('permission.table_names.model_has_roles')) {
+            if ($context) {
+                $belongsToMany->wherePivot('context_type', get_class($context))
+                    ->wherePivot('context_id', $context->id);
+            } else {
+                $belongsToMany->wherePivotNull('context_type')
+                    ->wherePivotNull('context_id');
+            }
+        }
+        $belongsToMany->detach();
 
-        return $this->assignRole($roles);
+        return $this->assignRole($roles, $context);
     }
 
     /**
@@ -171,28 +205,32 @@ trait HasRoles
      *
      * @param string|int|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection $roles
      * @param string|null $guard
+     * @param Model|null $context
      * @return bool
      */
-    public function hasRole($roles, string $guard = null): bool
+    public function hasRole($roles, string $guard = null, ?Model $context = null): bool
     {
         if (is_string($roles) && false !== strpos($roles, '|')) {
             $roles = $this->convertPipeToArray($roles);
         }
 
+        $rolesCollection = $guard ? $this->roles->where('guard_name', $guard) : $this->roles;
+        $rolesCollection = $rolesCollection->filter(function ($el) use ($context) {
+            $hasNotContext = $el->pivot->context_type === null && $el->pivot->context_id === null;
+            $hasThisContext = $context && $el->pivot->context_type === get_class($context) && intval($el->pivot->context_id) === intval($context->id);
+            return $hasNotContext || $hasThisContext;
+        });
+
         if (is_string($roles)) {
-            return $guard
-                ? $this->roles->where('guard_name', $guard)->contains('name', $roles)
-                : $this->roles->contains('name', $roles);
+            return $rolesCollection->contains('name', $roles);
         }
 
         if (is_int($roles)) {
-            return $guard
-                ? $this->roles->where('guard_name', $guard)->contains('id', $roles)
-                : $this->roles->contains('id', $roles);
+            return $rolesCollection->contains('id', $roles);
         }
 
         if ($roles instanceof Role) {
-            return $this->roles->contains('id', $roles->id);
+            return $rolesCollection->contains('id', $roles->id);
         }
 
         if (is_array($roles)) {
@@ -205,7 +243,7 @@ trait HasRoles
             return false;
         }
 
-        return $roles->intersect($guard ? $this->roles->where('guard_name', $guard) : $this->roles)->isNotEmpty();
+        return $roles->intersect($rolesCollection)->isNotEmpty();
     }
 
     /**
@@ -304,5 +342,19 @@ trait HasRoles
         }
 
         return explode('|', trim($pipeString, $quoteCharacter));
+    }
+
+    private function syncRolesWithoutDetaching($roles, $model, $context = null): void
+    {
+        $belongsToMany = $this->roles();
+        if ($context) {
+        $belongsToMany->wherePivot('context_type', get_class($context))
+            ->wherePivot('context_id', $context->id);
+        } else {
+        $belongsToMany->wherePivotNull('context_type')
+            ->wherePivotNull('context_id');
+        }
+        $belongsToMany->sync($roles, false);
+        $model->load('roles');
     }
 }

@@ -511,12 +511,22 @@ class HasPermissionsTest extends TestCase
         $roleModel->findByName('testRole2')->givePermissionTo('edit-news');
 
         $this->testUserRole->givePermissionTo('edit-articles');
-        $this->testUser->assignRole('testRole', 'testRole2');
+        $this->testUser->assignRole(['testRole', 'testRole2']);
 
         $this->assertEquals(
             collect(['edit-articles', 'edit-news']),
             $this->testUser->getPermissionsViaRoles()->pluck('name')
         );
+    }
+
+    /** @test */
+    public function it_can_use_global_permission_in_context()
+    {
+        $context = Team::create();
+        $this->testUser->givePermissionTo('edit-news');
+
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news'));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-news', $context));
     }
 
     /** @test */
