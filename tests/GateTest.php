@@ -37,6 +37,20 @@ class GateTest extends TestCase
     }
 
     /** @test */
+    public function it_can_determine_if_a_user_has_a_direct_permission_using_context()
+    {
+        $context = Team::create();
+        $this->testUser->givePermissionTo('edit-blog');
+        $this->testUser->givePermissionTo('edit-articles', $context);
+
+        $this->assertFalse($this->testUser->can('edit-articles'));
+        $this->assertTrue($this->testUser->can('edit-blog'));
+
+        $this->assertTrue($this->testUser->can('edit-articles', [null, $context]));
+        $this->assertTrue($this->testUser->can('edit-blog', [null, $context]));
+    }
+
+    /** @test */
     public function it_can_determine_if_a_user_has_a_permission_through_roles()
     {
         $this->testUserRole->givePermissionTo($this->testUserPermission);
