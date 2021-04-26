@@ -297,25 +297,67 @@ trait HasPermissions
 
     /**
      * Return all the permissions the model has via roles.
+     *
+     * @param Model|null $context
+     * @return Collection
      */
-    public function getPermissionsViaRoles(): Collection
+    public function getPermissionsViaRoles(?Model $context = null): Collection
     {
-        return $this->loadMissing('roles', 'roles.permissions')
-            ->roles->flatMap(function ($role) {
+        $rolesQuery = $this->roles();
+
+        if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
+            $rolesQuery->where(
+                function ($query) {
+                    $query->whereNull('context_id');
+                    $query->whereNull('context_type');
+                }
+            );
+            if ($context) {
+                $rolesQuery->orWhere(
+                    function (Builder $query) use ($context) {
+                        $query->where('context_type', get_class($context));
+                        $query->where('context_id', $context->id);
+                    }
+                );
+            }
+        }
+        $roles = $rolesQuery->get();
+
+        return $roles->flatMap(function ($role) {
                 return $role->permissions;
             })->sort()->values();
     }
 
     /**
      * Return all the permissions the model has, both directly and via roles.
+     *
+     * @param Model|null $context
+     * @return Collection
      */
-    public function getAllPermissions(): Collection
+    public function getAllPermissions(?Model $context = null): Collection
     {
-        /** @var Collection $permissions */
-        $permissions = $this->permissions;
+        $permissionsQuery = $this->permissions();
+
+        if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
+            $permissionsQuery->where(
+                function ($query) {
+                    $query->whereNull('context_id');
+                    $query->whereNull('context_type');
+                }
+            );
+            if ($context) {
+                $permissionsQuery->orWhere(
+                    function (Builder $query) use ($context) {
+                        $query->where('context_type', get_class($context));
+                        $query->where('context_id', $context->id);
+                    }
+                );
+            }
+        }
+        $permissions = $permissionsQuery->get();
 
         if ($this->roles) {
-            $permissions = $permissions->merge($this->getPermissionsViaRoles());
+            $permissions = $permissions->merge($this->getPermissionsViaRoles($context));
         }
 
         return $permissions->sort()->values();
@@ -419,7 +461,7 @@ trait HasPermissions
     public function revokePermissionTo($permission, ?Model $context = null)
     {
         $belongsToMany = $this->permissions();
-        if ($this->permissions()->getTable() === 'model_has_permissions') {
+        if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
             if ($context) {
             $belongsToMany->wherePivot('context_type', get_class($context))
                 ->wherePivot('context_id', $context->id);

@@ -570,6 +570,42 @@ class HasPermissionsTest extends TestCase
     }
 
     /** @test */
+    public function it_can_list_all_the_coupled_permissions_directly_using_context()
+    {
+        $context = Team::create();
+        $wrongContext = Team::create();
+        $this->testUser->givePermissionTo('edit-news');
+        $this->testUser->givePermissionTo('edit-articles', $context);
+        $this->testUser->givePermissionTo('edit-blog', $wrongContext);
+
+        $this->assertEquals(
+            collect(['edit-articles', 'edit-news']),
+            $this->testUser->getAllPermissions($context)->pluck('name')->sort()->values()
+        );
+    }
+
+    /** @test */
+    public function it_can_list_all_the_coupled_permissions_both_directly_and_via_roles_using_context()
+    {
+        $context = Team::create();
+        $wrongContext = Team::create();
+
+        $this->testUserRole->givePermissionTo('edit-articles');
+        $this->testUser->assignRole('testRole');
+
+        app(Role::class)->findByName('testRole2', 'web')->givePermissionTo('edit-news');
+        $this->testUser->assignRole('testRole2', $context);
+
+        app(Role::class)->findByName('testRole3', 'web')->givePermissionTo('edit-blog');
+        $this->testUser->assignRole('testRole3', $wrongContext);
+
+        $this->assertEquals(
+            collect(['edit-articles', 'edit-news']),
+            $this->testUser->getAllPermissions($context)->pluck('name')->sort()->values()
+        );
+    }
+
+    /** @test */
     public function it_can_sync_multiple_permissions()
     {
         $this->testUser->givePermissionTo('edit-news');

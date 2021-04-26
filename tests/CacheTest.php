@@ -200,7 +200,7 @@ class CacheTest extends TestCase
         $actual = $this->testUser->getAllPermissions()->pluck('name')->sort()->values();
         $this->assertEquals($actual, collect($expected));
 
-        $this->assertQueryCount(2);
+        $this->assertQueryCount(3);
     }
 
     /** @test */
