@@ -399,6 +399,9 @@ class HasRolesTest extends TestCase
         $user2->syncRoles('testRole2');
         $user2->save();
 
+        $this->assertTrue($user->fresh()->hasRole('testRole'));
+        $this->assertFalse($user->fresh()->hasRole('testRole2'));
+
         $this->assertTrue($user2->fresh()->hasRole('testRole2'));
         $this->assertFalse($user2->fresh()->hasRole('testRole'));
     }
@@ -413,6 +416,9 @@ class HasRolesTest extends TestCase
         $admin_user = new User(['email' => 'admin@user.com']);
         $admin_user->assignRole('testRole2');
         $admin_user->save();
+
+        $this->assertTrue($user->fresh()->hasRole('testRole'));
+        $this->assertFalse($user->fresh()->hasRole('testRole2'));
 
         $this->assertTrue($admin_user->fresh()->hasRole('testRole2'));
         $this->assertFalse($admin_user->fresh()->hasRole('testRole'));
@@ -457,7 +463,7 @@ class HasRolesTest extends TestCase
 
         $scopedUsers = User::role('testRole')->get();
 
-        $this->assertEquals($scopedUsers->count(), 1);
+        $this->assertEquals(1, $scopedUsers->count());
     }
 
     /** @test */
@@ -472,8 +478,8 @@ class HasRolesTest extends TestCase
 
         $scopedUsers2 = User::role(['testRole', 'testRole2'])->get();
 
-        $this->assertEquals($scopedUsers1->count(), 1);
-        $this->assertEquals($scopedUsers2->count(), 2);
+        $this->assertEquals(1, $scopedUsers1->count());
+        $this->assertEquals(2, $scopedUsers2->count());
     }
 
     /** @test */
@@ -492,7 +498,7 @@ class HasRolesTest extends TestCase
 
         $scopedUsers = User::role([$roleName, $otherRoleId])->get();
 
-        $this->assertEquals($scopedUsers->count(), 2);
+        $this->assertEquals(2, $scopedUsers->count());
     }
 
     /** @test */
@@ -506,8 +512,8 @@ class HasRolesTest extends TestCase
         $scopedUsers1 = User::role([$this->testUserRole])->get();
         $scopedUsers2 = User::role(collect(['testRole', 'testRole2']))->get();
 
-        $this->assertEquals($scopedUsers1->count(), 1);
-        $this->assertEquals($scopedUsers2->count(), 2);
+        $this->assertEquals(1, $scopedUsers1->count());
+        $this->assertEquals(2, $scopedUsers2->count());
     }
 
     /** @test */
@@ -522,9 +528,9 @@ class HasRolesTest extends TestCase
         $scopedUsers2 = User::role([$this->testUserRole])->get();
         $scopedUsers3 = User::role(collect([$this->testUserRole]))->get();
 
-        $this->assertEquals($scopedUsers1->count(), 1);
-        $this->assertEquals($scopedUsers2->count(), 1);
-        $this->assertEquals($scopedUsers3->count(), 1);
+        $this->assertEquals(1, $scopedUsers1->count());
+        $this->assertEquals(1, $scopedUsers2->count());
+        $this->assertEquals(1, $scopedUsers3->count());
     }
 
     /** @test */
@@ -537,7 +543,7 @@ class HasRolesTest extends TestCase
 
         $scopedUsers1 = User::role('testRole', 'web')->get();
 
-        $this->assertEquals($scopedUsers1->count(), 1);
+        $this->assertEquals(1, $scopedUsers1->count());
 
         $user3 = Admin::create(['email' => 'user1@test.com']);
         $user4 = Admin::create(['email' => 'user1@test.com']);
@@ -549,8 +555,8 @@ class HasRolesTest extends TestCase
         $scopedUsers2 = Admin::role('testAdminRole', 'admin')->get();
         $scopedUsers3 = Admin::role('testAdminRole2', 'admin')->get();
 
-        $this->assertEquals($scopedUsers2->count(), 2);
-        $this->assertEquals($scopedUsers3->count(), 1);
+        $this->assertEquals(2, $scopedUsers2->count());
+        $this->assertEquals(1, $scopedUsers3->count());
     }
 
     /** @test */

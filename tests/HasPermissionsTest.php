@@ -223,8 +223,8 @@ class HasPermissionsTest extends TestCase
         $scopedUsers1 = User::permission('edit-articles')->get();
         $scopedUsers2 = User::permission(['edit-news'])->get();
 
-        $this->assertEquals($scopedUsers1->count(), 2);
-        $this->assertEquals($scopedUsers2->count(), 1);
+        $this->assertEquals(2, $scopedUsers1->count());
+        $this->assertEquals(1, $scopedUsers2->count());
     }
 
     /** @test */
@@ -239,8 +239,8 @@ class HasPermissionsTest extends TestCase
         $scopedUsers1 = User::permission(['edit-articles', 'edit-news'])->get();
         $scopedUsers2 = User::permission(['edit-news'])->get();
 
-        $this->assertEquals($scopedUsers1->count(), 2);
-        $this->assertEquals($scopedUsers2->count(), 1);
+        $this->assertEquals(2, $scopedUsers1->count());
+        $this->assertEquals(1, $scopedUsers2->count());
     }
 
     /** @test */
@@ -255,8 +255,8 @@ class HasPermissionsTest extends TestCase
         $scopedUsers1 = User::permission(collect(['edit-articles', 'edit-news']))->get();
         $scopedUsers2 = User::permission(collect(['edit-news']))->get();
 
-        $this->assertEquals($scopedUsers1->count(), 2);
-        $this->assertEquals($scopedUsers2->count(), 1);
+        $this->assertEquals(2, $scopedUsers1->count());
+        $this->assertEquals(1, $scopedUsers2->count());
     }
 
     /** @test */
@@ -269,9 +269,9 @@ class HasPermissionsTest extends TestCase
         $scopedUsers2 = User::permission([$this->testUserPermission])->get();
         $scopedUsers3 = User::permission(collect([$this->testUserPermission]))->get();
 
-        $this->assertEquals($scopedUsers1->count(), 1);
-        $this->assertEquals($scopedUsers2->count(), 1);
-        $this->assertEquals($scopedUsers3->count(), 1);
+        $this->assertEquals(1, $scopedUsers1->count());
+        $this->assertEquals(1, $scopedUsers2->count());
+        $this->assertEquals(1, $scopedUsers3->count());
     }
 
     /** @test */
@@ -285,7 +285,7 @@ class HasPermissionsTest extends TestCase
 
         $scopedUsers = User::permission('edit-articles')->get();
 
-        $this->assertEquals($scopedUsers->count(), 2);
+        $this->assertEquals(2, $scopedUsers->count());
     }
 
     /** @test */
@@ -298,7 +298,7 @@ class HasPermissionsTest extends TestCase
 
         $scopedUsers = User::permission('edit-news')->get();
 
-        $this->assertEquals($scopedUsers->count(), 2);
+        $this->assertEquals(2, $scopedUsers->count());
     }
 
     /** @test */
@@ -662,6 +662,9 @@ class HasPermissionsTest extends TestCase
         $user2->givePermissionTo('edit-articles');
         $user2->save();
 
+        $this->assertTrue($user->fresh()->hasPermissionTo('edit-news'));
+        $this->assertFalse($user->fresh()->hasPermissionTo('edit-articles'));
+
         $this->assertTrue($user2->fresh()->hasPermissionTo('edit-articles'));
         $this->assertFalse($user2->fresh()->hasPermissionTo('edit-news'));
     }
@@ -676,6 +679,9 @@ class HasPermissionsTest extends TestCase
         $user2 = new User(['email' => 'test2@user.com']);
         $user2->syncPermissions('edit-articles');
         $user2->save();
+
+        $this->assertTrue($user->fresh()->hasPermissionTo('edit-news'));
+        $this->assertFalse($user->fresh()->hasPermissionTo('edit-articles'));
 
         $this->assertTrue($user2->fresh()->hasPermissionTo('edit-articles'));
         $this->assertFalse($user2->fresh()->hasPermissionTo('edit-news'));

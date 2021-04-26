@@ -373,12 +373,7 @@ trait HasPermissions
 
             $class::saved(
                 function ($object) use ($permissions, $model, $context) {
-                    static $modelLastFiredOn;
-                    if ($modelLastFiredOn !== null && $modelLastFiredOn === $model) {
-                        return;
-                    }
                     $this->syncPermissionsWithoutDetaching($permissions, $object, $context);
-                    $modelLastFiredOn = $object;
                 }
             );
         }

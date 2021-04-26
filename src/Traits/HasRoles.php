@@ -132,12 +132,7 @@ trait HasRoles
 
             $class::saved(
                 function ($object) use ($roles, $model, $context) {
-                    static $modelLastFiredOn;
-                    if ($modelLastFiredOn !== null && $modelLastFiredOn === $model) {
-                        return;
-                    }
                     $this->syncRolesWithoutDetaching($roles, $object, $context);
-                    $modelLastFiredOn = $object;
                 }
             );
         }
