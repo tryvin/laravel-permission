@@ -515,6 +515,23 @@ class HasPermissionsTest extends TestCase
     /** @test */
     public function it_can_determine_that_user_has_direct_permission()
     {
+        $context = Team::create();
+        $wrongContext = Team::create();
+        $this->testUser->givePermissionTo('edit-articles');
+        $this->testUser->givePermissionTo('edit-blog', $context);
+        $this->testUser->givePermissionTo('edit-news', $wrongContext);
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-articles', $context));
+        $this->assertTrue($this->testUser->hasDirectPermission('edit-blog', $context));
+        $this->assertFalse($this->testUser->hasDirectPermission('edit-news', $context));
+        $this->assertEquals(
+            collect(['edit-articles', 'edit-blog']),
+            $this->testUser->getDirectPermissions($context)->pluck('name')
+        );
+    }
+
+    /** @test */
+    public function it_can_determine_that_user_has_direct_permission_using_context()
+    {
         $this->testUser->givePermissionTo('edit-articles');
         $this->assertTrue($this->testUser->hasDirectPermission('edit-articles'));
         $this->assertEquals(

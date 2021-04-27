@@ -291,10 +291,32 @@ trait HasRoles
 
     /**
      * Return all permissions directly coupled to the model.
+     *
+     * @param Model|null $context
+     * @return Collection
      */
-    public function getDirectPermissions(): Collection
+    public function getDirectPermissions(?Model $context = null): Collection
     {
-        return $this->permissions;
+        $permissionsQuery = $this->permissions();
+
+        if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
+            $permissionsQuery->where(
+                function ($query) {
+                    $query->whereNull('context_id');
+                    $query->whereNull('context_type');
+                }
+            );
+            if ($context) {
+                $permissionsQuery->orWhere(
+                    function (Builder $query) use ($context) {
+                        $query->where('context_type', get_class($context));
+                        $query->where('context_id', $context->id);
+                    }
+                );
+            }
+        }
+
+        return $permissionsQuery->get();
     }
 
     public function getRoleNames(): Collection
