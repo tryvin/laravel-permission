@@ -344,19 +344,23 @@ trait HasPermissions
 
         if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
             $permissionsQuery->where(
-                function ($query) {
-                    $query->whereNull('context_id');
-                    $query->whereNull('context_type');
+                function ($query) use ($context) {
+                    $query->where(
+                        function ($query) {
+                            $query->whereNull('context_id');
+                            $query->whereNull('context_type');
+                        }
+                    );
+                    if ($context) {
+                        $query->orWhere(
+                            function (Builder $query) use ($context) {
+                                $query->where('context_type', get_class($context));
+                                $query->where('context_id', $context->id);
+                            }
+                        );
+                    }
                 }
             );
-            if ($context) {
-                $permissionsQuery->orWhere(
-                    function (Builder $query) use ($context) {
-                        $query->where('context_type', get_class($context));
-                        $query->where('context_id', $context->id);
-                    }
-                );
-            }
         }
         $permissions = $permissionsQuery->get();
 
