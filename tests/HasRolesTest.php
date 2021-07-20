@@ -201,6 +201,61 @@ class HasRolesTest extends TestCase
     }
 
     /** @test */
+    public function it_can_get_global_roles_with_or_without_context()
+    {
+        $context = Team::create();
+        $this->testUser->assignRole('testRole');
+
+        $this->assertEquals(
+            collect(['testRole']),
+            $this->testUser->getAllRoles()->pluck('name')->sort()->values()
+        );
+        $this->assertEquals(
+            collect(['testRole']),
+            $this->testUser->getAllRoles($context)->pluck('name')->sort()->values()
+        );
+    }
+
+    /** @test */
+    public function it_can_get_context_roles_with_context()
+    {
+        $context = Team::create();
+        $this->testUser->assignRole('testRole', $context);
+
+        $this->assertEquals(
+            collect([]),
+            $this->testUser->getAllRoles()->pluck('name')->sort()->values()
+        );
+        $this->assertEquals(
+            collect(['testRole']),
+            $this->testUser->getAllRoles($context)->pluck('name')->sort()->values()
+        );
+    }
+
+    /** @test */
+    public function it_can_get_different_roles_with_different_contexts()
+    {
+        $context1 = Team::create();
+        $context2 = Team::create();
+        $this->testUser->assignRole('testRole');
+        $this->testUser->assignRole('testRole2', $context1);
+        $this->testUser->assignRole('testRole3', $context2);
+
+        $this->assertEquals(
+            collect(['testRole']),
+            $this->testUser->getAllRoles()->pluck('name')->sort()->values()
+        );
+        $this->assertEquals(
+            collect(['testRole', 'testRole2']),
+            $this->testUser->getAllRoles($context1)->pluck('name')->sort()->values()
+        );
+        $this->assertEquals(
+            collect(['testRole', 'testRole3']),
+            $this->testUser->getAllRoles($context2)->pluck('name')->sort()->values()
+        );
+    }
+
+    /** @test */
     public function it_removes_a_role_and_returns_roles()
     {
         $this->testUser->assignRole('testRole');

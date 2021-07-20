@@ -356,6 +356,38 @@ trait HasRoles
         return $this->roles->pluck('name');
     }
 
+    /**
+     * Return all the roles the model has using context.
+     *
+     * @param Model|null $context
+     * @return Collection
+     */
+    public function getAllRoles(?Model $context = null): Collection
+    {
+        $rolesQuery = $this->roles();
+
+        $rolesQuery->where(
+            function ($query) use ($context) {
+                $query->where(
+                    function ($query) {
+                        $query->whereNull('context_id');
+                        $query->whereNull('context_type');
+                    }
+                );
+                if ($context) {
+                    $query->orWhere(
+                        function (Builder $query) use ($context) {
+                            $query->where('context_type', get_class($context));
+                            $query->where('context_id', $context->id);
+                        }
+                    );
+                }
+            }
+        );
+
+        return $rolesQuery->get();
+    }
+
     protected function getStoredRole($role): Role
     {
         $roleClass = $this->getRoleClass();
