@@ -289,6 +289,7 @@ trait HasPermissions
         $permissions = $this->permissions->filter(function ($el) use ($context) {
             $hasNotContext = $el->pivot->context_type === null && $el->pivot->context_id === null;
             $hasThisContext = $context && $el->pivot->context_type === get_class($context) && intval($el->pivot->context_id) === intval($context->id);
+
             return $hasNotContext || $hasThisContext;
         });
 
@@ -328,8 +329,8 @@ trait HasPermissions
         $roles = $rolesQuery->get();
 
         return $roles->flatMap(function ($role) {
-                return $role->permissions;
-            })->sort()->values();
+            return $role->permissions;
+        })->sort()->values();
     }
 
     /**

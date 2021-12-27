@@ -90,6 +90,7 @@ class PermissionRegistrar
                 if (method_exists($user, 'getContext') && ($context = $user->getContext())) {
                     return $user->checkPermissionTo($ability, null, $context) ?: null;
                 }
+
                 return $user->checkPermissionTo($ability) ?: null;
             }
         });
