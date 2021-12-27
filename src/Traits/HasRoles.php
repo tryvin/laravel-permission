@@ -152,13 +152,13 @@ trait HasRoles
     public function removeRole($role, ?Model $context = null)
     {
         $belongsToMany = $this->roles();
-        if ($this->roles()->getTable() === 'model_has_roles') {
+        if ($this->roles()->getTable() === config('permission.table_names.model_has_roles')) {
             if ($context) {
-            $belongsToMany->wherePivot('context_type', get_class($context))
-                ->wherePivot('context_id', $context->id);
+                $belongsToMany->wherePivot('context_type', get_class($context))
+                    ->wherePivot('context_id', $context->id);
             } else {
-            $belongsToMany->wherePivotNull('context_type')
-                ->wherePivotNull('context_id');
+                $belongsToMany->wherePivotNull('context_type')
+                    ->wherePivotNull('context_id');
             }
         }
         $belongsToMany->detach($this->getStoredRole($role));
@@ -428,12 +428,14 @@ trait HasRoles
     private function syncRolesWithoutDetaching($roles, $model, $context = null): void
     {
         $belongsToMany = $this->roles();
-        if ($context) {
-        $belongsToMany->wherePivot('context_type', get_class($context))
-            ->wherePivot('context_id', $context->id);
-        } else {
-        $belongsToMany->wherePivotNull('context_type')
-            ->wherePivotNull('context_id');
+        if ($this->roles()->getTable() === config('permission.table_names.model_has_roles')) {
+            if ($context) {
+                $belongsToMany->wherePivot('context_type', get_class($context))
+                    ->wherePivot('context_id', $context->id);
+            } else {
+                $belongsToMany->wherePivotNull('context_type')
+                    ->wherePivotNull('context_id');
+            }
         }
         $belongsToMany->sync($roles, false);
         $model->load('roles');

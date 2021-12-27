@@ -446,11 +446,11 @@ trait HasPermissions
         $belongsToMany = $this->permissions();
         if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
             if ($context) {
-            $belongsToMany->wherePivot('context_type', get_class($context))
-                ->wherePivot('context_id', $context->id);
+                $belongsToMany->wherePivot('context_type', get_class($context))
+                    ->wherePivot('context_id', $context->id);
             } else {
-            $belongsToMany->wherePivotNull('context_type')
-                ->wherePivotNull('context_id');
+                $belongsToMany->wherePivotNull('context_type')
+                    ->wherePivotNull('context_id');
             }
         }
         $belongsToMany->detach();
@@ -471,11 +471,11 @@ trait HasPermissions
         $belongsToMany = $this->permissions();
         if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
             if ($context) {
-            $belongsToMany->wherePivot('context_type', get_class($context))
-                ->wherePivot('context_id', $context->id);
+                $belongsToMany->wherePivot('context_type', get_class($context))
+                    ->wherePivot('context_id', $context->id);
             } else {
-            $belongsToMany->wherePivotNull('context_type')
-                ->wherePivotNull('context_id');
+                $belongsToMany->wherePivotNull('context_type')
+                    ->wherePivotNull('context_id');
             }
         }
         $belongsToMany->detach($this->getStoredPermission($permission));
@@ -589,12 +589,14 @@ trait HasPermissions
     private function syncPermissionsWithoutDetaching($permissions, $model, $context = null): void
     {
         $belongsToMany = $this->permissions();
-        if ($context) {
-        $belongsToMany->wherePivot('context_type', get_class($context))
-            ->wherePivot('context_id', $context->id);
-        } else {
-        $belongsToMany->wherePivotNull('context_type')
-            ->wherePivotNull('context_id');
+        if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
+            if ($context) {
+                $belongsToMany->wherePivot('context_type', get_class($context))
+                    ->wherePivot('context_id', $context->id);
+            } else {
+                $belongsToMany->wherePivotNull('context_type')
+                    ->wherePivotNull('context_id');
+            }
         }
         $belongsToMany->sync($permissions, false);
         $model->load('permissions');
