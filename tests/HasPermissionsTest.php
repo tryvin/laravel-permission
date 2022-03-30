@@ -828,29 +828,29 @@ class HasPermissionsTest extends TestCase
     /** @test */
     public function it_can_filter_users_who_have_all_of_the_permissions_directly()
     {
-        $this->assertCount(0, User::whereHasAllPermissionForContext(['edit-articles'], null)->get());
+        $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-articles'], null)->get());
 
         $this->testUser->givePermissionTo('edit-articles');
 
-        $this->assertCount(1, User::whereHasAllPermissionForContext(['edit-articles'], null)->get());
-        $this->assertCount(0, User::whereHasAllPermissionForContext(['edit-articles', 'edit-news'], null)->get());
+        $this->assertCount(1, User::whereHasAllPermissionsForContext(['edit-articles'], null)->get());
+        $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-articles', 'edit-news'], null)->get());
     }
 
     /** @test */
     public function it_can_filter_users_who_have_all_of_the_permissions_directly_using_context()
     {
         $context = Team::create();
-        $this->assertCount(0, User::whereHasAllPermissionForContext(['edit-articles', 'edit-news'], null)->get());
+        $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-articles', 'edit-news'], null)->get());
 
         $this->testUser->givePermissionTo('edit-articles');
         $this->testUser->givePermissionTo('edit-news', $context);
 
-        $this->assertCount(1, User::whereHasAllPermissionForContext(['edit-articles'], null)->get());
-        $this->assertCount(0, User::whereHasAllPermissionForContext(['edit-news'], null)->get());
-        $this->assertCount(0, User::whereHasAllPermissionForContext(['edit-articles', 'edit-news'], null)->get());
-        $this->assertCount(1, User::whereHasAllPermissionForContext(['edit-articles'], $context)->get());
-        $this->assertCount(1, User::whereHasAllPermissionForContext(['edit-news'], $context)->get());
-        $this->assertCount(1, User::whereHasAllPermissionForContext(['edit-articles', 'edit-news'], $context)->get());
+        $this->assertCount(1, User::whereHasAllPermissionsForContext(['edit-articles'], null)->get());
+        $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-news'], null)->get());
+        $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-articles', 'edit-news'], null)->get());
+        $this->assertCount(1, User::whereHasAllPermissionsForContext(['edit-articles'], $context)->get());
+        $this->assertCount(1, User::whereHasAllPermissionsForContext(['edit-news'], $context)->get());
+        $this->assertCount(1, User::whereHasAllPermissionsForContext(['edit-articles', 'edit-news'], $context)->get());
     }
 
     /** @test */
@@ -860,8 +860,8 @@ class HasPermissionsTest extends TestCase
 
         $this->testUser->assignRole('testRole');
 
-        $this->assertCount(1, User::whereHasAllPermissionForContext(['edit-articles'], null)->get());
-        $this->assertCount(0, User::whereHasAllPermissionForContext(['edit-news', 'edit-articles'], null)->get());
+        $this->assertCount(1, User::whereHasAllPermissionsForContext(['edit-articles'], null)->get());
+        $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-news', 'edit-articles'], null)->get());
     }
 
     /** @test */
@@ -871,9 +871,9 @@ class HasPermissionsTest extends TestCase
         $this->testUserRole->givePermissionTo('edit-articles');
         $this->testUser->assignRole('testRole', $context);
 
-        $this->assertCount(1, User::whereHasAllPermissionForContext(['edit-articles'], $context)->get());
-        $this->assertCount(0, User::whereHasAllPermissionForContext(['edit-news', 'edit-articles'], $context)->get());
-        $this->assertCount(0, User::whereHasAllPermissionForContext(['edit-articles'], null)->get());
-        $this->assertCount(0, User::whereHasAllPermissionForContext(['edit-news', 'edit-articles'], null)->get());
+        $this->assertCount(1, User::whereHasAllPermissionsForContext(['edit-articles'], $context)->get());
+        $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-news', 'edit-articles'], $context)->get());
+        $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-articles'], null)->get());
+        $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-news', 'edit-articles'], null)->get());
     }
 }

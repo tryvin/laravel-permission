@@ -139,7 +139,7 @@ trait HasPermissions
         });
     }
 
-    public function scopeWhereHasAllPermissionForContext(Builder $query, array $permissions, ?Model $context): Builder
+    public function scopeWhereHasAllPermissionsForContext(Builder $query, array $permissions, ?Model $context): Builder
     {
         $permissions = $this->convertToPermissionModels($permissions);
 
