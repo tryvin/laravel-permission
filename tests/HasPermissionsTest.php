@@ -876,4 +876,16 @@ class HasPermissionsTest extends TestCase
         $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-articles'], null)->get());
         $this->assertCount(0, User::whereHasAllPermissionsForContext(['edit-news', 'edit-articles'], null)->get());
     }
+
+    /** @test */
+    public function it_returns_no_users_when_filtering_by_any_with_empty_array()
+    {
+        $this->assertCount(0, User::whereHasAnyPermissionForContext([], null)->get());
+    }
+
+    /** @test */
+    public function it_returns_all_users_when_filtering_by_all_with_empty_array()
+    {
+        $this->assertCount(1, User::whereHasAllPermissionsForContext([], null)->get());
+    }
 }
