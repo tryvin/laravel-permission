@@ -81,6 +81,126 @@ trait HasPermissions
         });
     }
 
+    public function scopeWhereHasAnyPermissionForContext(Builder $query, array $permissions, ?Model $context): Builder
+    {
+        $permissions = $this->convertToPermissionModels($permissions);
+
+        $rolesWithPermissions = array_unique(array_reduce($permissions, function ($result, $permission) {
+            return array_merge($result, $permission->roles->all());
+        }, []));
+
+        return $query->where(function (Builder $query) use ($context, $permissions, $rolesWithPermissions) {
+            $query->whereHas('permissions', function (Builder $subQuery) use ($context, $permissions) {
+                $subQuery->whereIn(config('permission.table_names.permissions').'.id', \array_column($permissions, 'id'));
+                if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
+                    $subQuery->where(
+                        function ($query) use ($context) {
+                            $query->where(
+                                function ($query) {
+                                    $query->whereNull('context_id');
+                                    $query->whereNull('context_type');
+                                }
+                            );
+                            if ($context) {
+                                $query->orWhere(
+                                    function (Builder $query) use ($context) {
+                                        $query->where('context_type', get_class($context));
+                                        $query->where('context_id', $context->id);
+                                    }
+                                );
+                            }
+                        }
+                    );
+                }
+            });
+            if (count($rolesWithPermissions) > 0) {
+                $query->orWhereHas('roles', function (Builder $subQuery) use ($context, $rolesWithPermissions) {
+                    $subQuery->whereIn(config('permission.table_names.roles').'.id', \array_column($rolesWithPermissions, 'id'));
+                    $subQuery->where(
+                        function ($query) use ($context) {
+                            $query->where(
+                                function ($query) {
+                                    $query->whereNull('context_id');
+                                    $query->whereNull('context_type');
+                                }
+                            );
+                            if ($context) {
+                                $query->orWhere(
+                                    function (Builder $query) use ($context) {
+                                        $query->where('context_type', get_class($context));
+                                        $query->where('context_id', $context->id);
+                                    }
+                                );
+                            }
+                        }
+                    );
+                });
+            }
+        });
+    }
+
+    public function scopeWhereHasAllPermissionForContext(Builder $query, array $permissions, ?Model $context): Builder
+    {
+        $permissions = $this->convertToPermissionModels($permissions);
+
+        return $query->where(function (Builder $query) use ($context, $permissions) {
+            foreach ($permissions as $permission) {
+                $query->where(function (Builder $query) use ($context, $permission) {
+                    $query->whereHas('permissions', function (Builder $subQuery) use ($context, $permission) {
+                        $subQuery->where(
+                            config('permission.table_names.permissions') . '.id',
+                            $permission->id
+                        );
+                        if ($this->permissions()->getTable() === config('permission.table_names.model_has_permissions')) {
+                            $subQuery->where(
+                                function ($query) use ($context) {
+                                    $query->where(
+                                        function ($query) {
+                                            $query->whereNull('context_id');
+                                            $query->whereNull('context_type');
+                                        }
+                                    );
+                                    if ($context) {
+                                        $query->orWhere(
+                                            function (Builder $query) use ($context) {
+                                                $query->where('context_type', get_class($context));
+                                                $query->where('context_id', $context->id);
+                                            }
+                                        );
+                                    }
+                                }
+                            );
+                        }
+                    });
+                    $rolesWithPermission = array_unique($permission->roles->all());
+                    if (count($rolesWithPermission) > 0) {
+                        $query->orWhereHas('roles', function (Builder $subQuery) use ($context, $rolesWithPermission) {
+                            $subQuery->whereIn(config('permission.table_names.roles').'.id', \array_column($rolesWithPermission, 'id'));
+                            $subQuery->where(
+                                function ($query) use ($context) {
+                                    $query->where(
+                                        function ($query) {
+                                            $query->whereNull('context_id');
+                                            $query->whereNull('context_type');
+                                        }
+                                    );
+                                    if ($context) {
+                                        $query->orWhere(
+                                            function (Builder $query) use ($context) {
+                                                $query->where('context_type', get_class($context));
+                                                $query->where('context_id', $context->id);
+                                            }
+                                        );
+                                    }
+                                }
+                            );
+                        });
+                    }
+                });
+            }
+        });
+    }
+
     /**
      * @param string|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection $permissions
      *
